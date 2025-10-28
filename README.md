@@ -286,7 +286,7 @@ Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para de
 
 ## 🙏 Agradecimentos
 
-- Baseado nas planilhas de controle financeiro do livro referenciado
+- Baseado em planilhas de controle financeiro
 - Inspirado nos princípios de Clean Architecture do Uncle Bob
 - Community .NET e Angular
 
