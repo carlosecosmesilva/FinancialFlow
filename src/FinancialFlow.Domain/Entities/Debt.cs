@@ -6,7 +6,6 @@ namespace FinancialFlow.Domain.Entities
 {
     /// <summary>
     /// Aggregate Root que representa uma dívida.
-    /// Baseado na planilha "Planilha para organizar dividas 2024.xlsx"
     /// </summary>
     public class Debt : Entity
     {

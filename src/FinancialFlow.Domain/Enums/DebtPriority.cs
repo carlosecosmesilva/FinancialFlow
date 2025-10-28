@@ -2,7 +2,6 @@ namespace FinancialFlow.Domain.Enums
 {
     /// <summary>
     /// Prioridade de pagamento de uma dívida.
-    /// Baseado na coluna "Pode esperar?" da planilha.
     /// </summary>
     public enum DebtPriority
     {

@@ -1,7 +1,7 @@
 namespace FinancialFlow.Domain.Enums
 {
     /// <summary>
-    /// Tipos de investimento baseados na planilha de controle financeiro.
+    /// Tipos de investimento baseados em planilhas de controle financeiro.
     /// </summary>
     public enum InvestmentType
     {

@@ -1,7 +1,7 @@
 namespace FinancialFlow.Domain.Enums
 {
     /// <summary>
-    /// Categorias de transações baseadas na planilha de controle financeiro.
+    /// Categorias de transações baseadas em planilhas de controle financeiro.
     /// </summary>
     public enum CategoryType
     {

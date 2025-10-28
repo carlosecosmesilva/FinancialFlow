@@ -6,7 +6,7 @@ namespace FinancialFlow.Domain.Entities
 {
     /// <summary>
     /// Aggregate Root que representa um investimento.
-    /// Baseado na planilha de controle financeiro (Ações, Tesouro Direto, Renda Fixa, Previdência).
+    /// Ações, Tesouro Direto, Renda Fixa, Previdência.
     /// </summary>
     public class Investment : Entity
     {
