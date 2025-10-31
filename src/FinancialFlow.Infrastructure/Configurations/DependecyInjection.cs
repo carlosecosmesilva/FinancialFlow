@@ -19,8 +19,9 @@ public static class DependencyInjection
             options.UseNpgsql(connectionString, npgsql =>
             {
                 npgsql.MigrationsAssembly(typeof(ApplicationDbContext).Assembly.FullName);
+                npgsql.MigrationsHistoryTable("__EFMigrationsHistory");
             });
-            options.UseSnakeCaseNamingConvention();
+            // options.UseSnakeCaseNamingConvention(); // Comentado temporariamente - adicionar pacote EFCore.NamingConventions se necessário
         });
 
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<ApplicationDbContext>());
