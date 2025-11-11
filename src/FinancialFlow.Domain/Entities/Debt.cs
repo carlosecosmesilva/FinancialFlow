@@ -1,5 +1,7 @@
 using System;
 using FinancialFlow.Domain.Enums;
+using FinancialFlow.Domain.Events;
+using FinancialFlow.Domain.Exceptions;
 using FinancialFlow.Domain.ValueObjects;
 
 namespace FinancialFlow.Domain.Entities
@@ -104,27 +106,39 @@ namespace FinancialFlow.Domain.Entities
             string? description = null)
         {
             if (userId == Guid.Empty)
-                throw new ArgumentException("UserId is required.", nameof(userId));
+                throw new DomainException("INVALID_USER", "UserId is required");
 
             if (string.IsNullOrWhiteSpace(creditor))
-                throw new ArgumentException("Creditor name is required.", nameof(creditor));
+                throw new DomainException("INVALID_CREDITOR", "Creditor name is required");
+
+            if (creditor.Length > 200)
+                throw new DomainException("INVALID_CREDITOR", "Creditor name cannot exceed 200 characters");
 
             if (installmentAmount is null)
                 throw new ArgumentNullException(nameof(installmentAmount));
 
+            if (installmentAmount.Amount <= 0)
+                throw new DomainException("INVALID_AMOUNT", "Installment amount must be greater than zero");
+
             if (initialAmount is null)
                 throw new ArgumentNullException(nameof(initialAmount));
 
+            if (initialAmount.Amount <= 0)
+                throw new DomainException("INVALID_AMOUNT", "Initial amount must be greater than zero");
+
             if (totalInstallments <= 0)
-                throw new ArgumentOutOfRangeException(nameof(totalInstallments), "Total installments must be greater than zero.");
+                throw new DomainException("INVALID_INSTALLMENTS", "Total installments must be greater than zero");
+
+            if (totalInstallments > 360)
+                throw new DomainException("INVALID_INSTALLMENTS", "Total installments cannot exceed 360 (30 years)");
 
             if (interestRate < 0)
-                throw new ArgumentOutOfRangeException(nameof(interestRate), "Interest rate cannot be negative.");
+                throw new DomainException("INVALID_INTEREST", "Interest rate cannot be negative");
+
+            if (interestRate > 100)
+                throw new DomainException("INVALID_INTEREST", "Interest rate cannot exceed 100%");
 
             var debt = new Debt(userId, creditor, installmentAmount, totalInstallments, interestRate, initialAmount, priority, nextDueDate, description);
-
-            // Adicionar Domain Event se necessário
-            // debt.AddDomainEvent(new DebtCreatedEvent(debt));
 
             return debt;
         }
@@ -135,20 +149,35 @@ namespace FinancialFlow.Domain.Entities
         public void RegisterPayment(DateTimeOffset paymentDate)
         {
             if (Status == DebtStatus.Paid)
-                throw new InvalidOperationException("Debt is already paid off.");
+                throw new DomainException("DEBT_ALREADY_PAID", "Debt is already paid off");
 
             PaidInstallments++;
+
+            // Domain Event para parcela paga
+            AddDomainEvent(new DebtInstallmentPaidEvent(
+                Id,
+                UserId,
+                InstallmentAmount,
+                PaidInstallments,
+                TotalInstallments - PaidInstallments));
 
             if (PaidInstallments >= TotalInstallments)
             {
                 Status = DebtStatus.Paid;
                 NextDueDate = null;
-                // AddDomainEvent(new DebtPaidOffEvent(this));
+
+                // Domain Event para dívida quitada
+                AddDomainEvent(new DebtFullyPaidEvent(
+                    Id,
+                    UserId,
+                    Creditor,
+                    new Money(InstallmentAmount.Amount * TotalInstallments, InstallmentAmount.Currency)));
             }
             else if (NextDueDate.HasValue)
             {
                 // Próximo vencimento é após 1 mês
                 NextDueDate = NextDueDate.Value.AddMonths(1);
+                Status = DebtStatus.Active; // Remove status de vencido se estava
             }
         }
 

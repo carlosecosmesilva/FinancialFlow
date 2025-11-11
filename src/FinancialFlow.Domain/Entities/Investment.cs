@@ -1,5 +1,7 @@
 using System;
 using FinancialFlow.Domain.Enums;
+using FinancialFlow.Domain.Events;
+using FinancialFlow.Domain.Exceptions;
 using FinancialFlow.Domain.ValueObjects;
 
 namespace FinancialFlow.Domain.Entities
@@ -105,22 +107,29 @@ namespace FinancialFlow.Domain.Entities
             string? notes = null)
         {
             if (userId == Guid.Empty)
-                throw new ArgumentException("UserId is required.", nameof(userId));
+                throw new DomainException("INVALID_USER", "UserId is required");
 
             if (string.IsNullOrWhiteSpace(name))
-                throw new ArgumentException("Investment name is required.", nameof(name));
+                throw new DomainException("INVALID_NAME", "Investment name is required");
+
+            if (name.Length > 200)
+                throw new DomainException("INVALID_NAME", "Investment name cannot exceed 200 characters");
 
             if (initialAmount is null)
                 throw new ArgumentNullException(nameof(initialAmount));
 
             if (initialAmount.Amount <= 0)
-                throw new ArgumentOutOfRangeException(nameof(initialAmount), "Initial amount must be greater than zero.");
+                throw new DomainException("INVALID_AMOUNT", "Initial amount must be greater than zero");
+
+            if (expectedAnnualReturn.HasValue && (expectedAnnualReturn.Value < -100 || expectedAnnualReturn.Value > 1000))
+                throw new DomainException("INVALID_RETURN", "Expected annual return must be between -100% and 1000%");
 
             var invDate = investmentDate ?? DateTimeOffset.UtcNow;
 
-            var investment = new Investment(userId, name, type, initialAmount, invDate, expectedAnnualReturn, maturityDate, institution, notes);
+            if (maturityDate.HasValue && maturityDate.Value <= invDate)
+                throw new DomainException("INVALID_DATE", "Maturity date must be after investment date");
 
-            // AddDomainEvent(new InvestmentCreatedEvent(investment));
+            var investment = new Investment(userId, name, type, initialAmount, invDate, expectedAnnualReturn, maturityDate, institution, notes);
 
             return investment;
         }
@@ -134,9 +143,16 @@ namespace FinancialFlow.Domain.Entities
                 throw new ArgumentNullException(nameof(newAmount));
 
             if (newAmount.Currency != CurrentAmount.Currency)
-                throw new InvalidOperationException("Cannot update with different currency.");
+                throw new DomainException("INVALID_CURRENCY", "Cannot update with different currency");
 
+            if (newAmount.Amount < 0)
+                throw new DomainException("INVALID_AMOUNT", "Investment value cannot be negative");
+
+            var previousValue = CurrentAmount;
             CurrentAmount = newAmount;
+
+            // Domain Event
+            AddDomainEvent(new InvestmentValueUpdatedEvent(Id, UserId, previousValue, newAmount));
         }
 
         /// <summary>
@@ -164,10 +180,9 @@ namespace FinancialFlow.Domain.Entities
         public void Redeem(DateTimeOffset redemptionDate)
         {
             if (!IsActive)
-                throw new InvalidOperationException("Investment is already inactive.");
+                throw new DomainException("INVESTMENT_INACTIVE", "Investment is already inactive");
 
             IsActive = false;
-            // AddDomainEvent(new InvestmentRedeemedEvent(this, redemptionDate));
         }
 
         /// <summary>
@@ -178,13 +193,17 @@ namespace FinancialFlow.Domain.Entities
             if (amount is null)
                 throw new ArgumentNullException(nameof(amount));
 
+            if (amount.Amount <= 0)
+                throw new DomainException("INVALID_AMOUNT", "Contribution amount must be greater than zero");
+
             if (!IsActive)
-                throw new InvalidOperationException("Cannot add contribution to inactive investment.");
+                throw new DomainException("INVESTMENT_INACTIVE", "Cannot add contribution to inactive investment");
+
+            if (amount.Currency != InitialAmount.Currency)
+                throw new DomainException("INVALID_CURRENCY", "Contribution currency must match investment currency");
 
             InitialAmount = InitialAmount.Add(amount);
             CurrentAmount = CurrentAmount.Add(amount);
-
-            // AddDomainEvent(new InvestmentContributionAddedEvent(this, amount, contributionDate));
         }
 
         /// <summary>

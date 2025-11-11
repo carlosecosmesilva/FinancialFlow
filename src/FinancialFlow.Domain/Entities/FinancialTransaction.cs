@@ -1,5 +1,7 @@
 using System;
 using FinancialFlow.Domain.Enums;
+using FinancialFlow.Domain.Events;
+using FinancialFlow.Domain.Exceptions;
 using FinancialFlow.Domain.ValueObjects;
 
 namespace FinancialFlow.Domain.Entities
@@ -14,16 +16,24 @@ namespace FinancialFlow.Domain.Entities
         public DateTimeOffset TransactionDate { get; private set; }
         public TransactionType Type { get; private set; }
         public Money Value { get; private set; } = null!;
+        public string? Category { get; private set; }
+        public string? Notes { get; private set; }
 
-        // Construtor protegido para EF Core e herança
-        protected FinancialTransaction() { }
+        // Construtor protegido para EF Core
+        protected FinancialTransaction()
+        {
+            Description = string.Empty;
+            Value = null!;
+        }
 
         private FinancialTransaction(
             Guid userId,
             Money value,
             TransactionType type,
             string description,
-            DateTimeOffset transactionDate)
+            DateTimeOffset transactionDate,
+            string? category = null,
+            string? notes = null)
             : base()
         {
             UserId = userId;
@@ -31,33 +41,47 @@ namespace FinancialFlow.Domain.Entities
             Type = type;
             Description = description ?? string.Empty;
             TransactionDate = transactionDate;
+            Category = category;
+            Notes = notes;
         }
 
         /// <summary>
-        /// Método factory para criar uma nova transação financeira com validações.
+        /// Factory method para criar uma nova transação financeira com validações completas.
         /// </summary>
         public static FinancialTransaction Create(
             Guid userId,
             Money value,
             TransactionType type,
             string description,
-            DateTimeOffset? transactionDate = null)
+            DateTimeOffset? transactionDate = null,
+            string? category = null,
+            string? notes = null)
         {
-            // Validações básicas
+            // Validações de domínio
             if (userId == Guid.Empty)
-                throw new ArgumentException("UserId is required.", nameof(userId));
+                throw new DomainException("INVALID_USER", "UserId is required");
 
             if (value is null)
                 throw new ArgumentNullException(nameof(value));
 
             if (value.Amount < 0)
-                throw new ArgumentOutOfRangeException(nameof(value), "Transaction value must be non-negative.");
+                throw new DomainException("INVALID_AMOUNT", "Transaction value must be non-negative");
+
+            if (string.IsNullOrWhiteSpace(description))
+                throw new DomainException("INVALID_DESCRIPTION", "Description is required");
+
+            if (description.Length > 500)
+                throw new DomainException("INVALID_DESCRIPTION", "Description cannot exceed 500 characters");
 
             var txDate = transactionDate ?? DateTimeOffset.UtcNow;
-            var transaction = new FinancialTransaction(userId, value, type, description, txDate);
 
-            // Adicionar Domain Event se necessário
-            // transaction.AddDomainEvent(new TransactionCreatedEvent(transaction));
+            if (txDate > DateTimeOffset.UtcNow.AddDays(1))
+                throw new DomainException("INVALID_DATE", "Transaction date cannot be in the future");
+
+            var transaction = new FinancialTransaction(userId, value, type, description, txDate, category, notes);
+
+            // Domain Event
+            transaction.AddDomainEvent(new TransactionCreatedEvent(transaction));
 
             return transaction;
         }
@@ -67,7 +91,13 @@ namespace FinancialFlow.Domain.Entities
         /// </summary>
         public void UpdateDescription(string description)
         {
-            Description = description ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(description))
+                throw new DomainException("INVALID_DESCRIPTION", "Description is required");
+
+            if (description.Length > 500)
+                throw new DomainException("INVALID_DESCRIPTION", "Description cannot exceed 500 characters");
+
+            Description = description;
         }
 
         /// <summary>
@@ -78,6 +108,12 @@ namespace FinancialFlow.Domain.Entities
             if (value is null)
                 throw new ArgumentNullException(nameof(value));
 
+            if (value.Amount < 0)
+                throw new DomainException("INVALID_AMOUNT", "Transaction value must be non-negative");
+
+            if (value.Currency != Value.Currency)
+                throw new DomainException("INVALID_CURRENCY", "Cannot change transaction currency");
+
             Value = value;
         }
 
@@ -86,7 +122,37 @@ namespace FinancialFlow.Domain.Entities
         /// </summary>
         public void UpdateTransactionDate(DateTimeOffset transactionDate)
         {
+            if (transactionDate > DateTimeOffset.UtcNow.AddDays(1))
+                throw new DomainException("INVALID_DATE", "Transaction date cannot be in the future");
+
             TransactionDate = transactionDate;
         }
+
+        /// <summary>
+        /// Atualiza a categoria da transação.
+        /// </summary>
+        public void UpdateCategory(string? category)
+        {
+            Category = category;
+        }
+
+        /// <summary>
+        /// Atualiza as notas da transação.
+        /// </summary>
+        public void UpdateNotes(string? notes)
+        {
+            Notes = notes;
+        }
+
+        /// <summary>
+        /// Verifica se é uma receita.
+        /// </summary>
+        public bool IsRevenue() => Type == TransactionType.Revenue;
+
+        /// <summary>
+        /// Verifica se é uma despesa.
+        /// </summary>
+        public bool IsExpense() => Type == TransactionType.Expense;
     }
 }
+
