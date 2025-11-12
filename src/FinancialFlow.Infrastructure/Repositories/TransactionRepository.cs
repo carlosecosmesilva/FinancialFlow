@@ -26,6 +26,17 @@ public sealed class TransactionRepository(ApplicationDbContext context) : ITrans
             .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
     }
 
+    public async Task<IEnumerable<FinancialTransaction>> GetByUserIdAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+        return await _context.FinancialTransactions
+            .AsNoTracking()
+            .Where(t => t.UserId == userId)
+            .OrderByDescending(t => t.TransactionDate)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<IEnumerable<FinancialTransaction>> GetByPeriodAsync(
         Guid userId,
         DateTimeOffset startDate,
@@ -114,5 +125,11 @@ public sealed class TransactionRepository(ApplicationDbContext context) : ITrans
     public void Update(FinancialTransaction transaction)
     {
         _context.FinancialTransactions.Update(transaction);
+    }
+
+    public Task DeleteAsync(FinancialTransaction transaction, CancellationToken cancellationToken)
+    {
+        _context.FinancialTransactions.Remove(transaction);
+        return Task.CompletedTask;
     }
 }

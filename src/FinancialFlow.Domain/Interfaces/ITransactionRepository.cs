@@ -14,6 +14,13 @@ namespace FinancialFlow.Domain.Interfaces
     public interface ITransactionRepository : IRepository<FinancialTransaction>
     {
         /// <summary>
+        /// Busca todas as transações de um usuário.
+        /// </summary>
+        Task<IEnumerable<FinancialTransaction>> GetByUserIdAsync(
+            Guid userId,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// Busca transações de um usuário em um período específico.
         /// </summary>
         Task<IEnumerable<FinancialTransaction>> GetByPeriodAsync(
@@ -66,5 +73,13 @@ namespace FinancialFlow.Domain.Interfaces
             DateTimeOffset startDate,
             DateTimeOffset endDate,
             CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Deleta uma transação específica.
+        /// </summary>
+        /// <param name="transaction">A transação a ser deletada.</param>
+        /// <param name="cancellationToken">Token para cancelamento da operação.</param>
+        /// <returns></returns>
+        Task DeleteAsync(FinancialTransaction transaction, CancellationToken cancellationToken);
     }
 }

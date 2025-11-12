@@ -20,10 +20,11 @@ namespace FinancialFlow.Domain.Entities
         public string? Notes { get; private set; }
 
         // Construtor protegido para EF Core
-        protected FinancialTransaction()
+        protected FinancialTransaction(Guid userId)
         {
             Description = string.Empty;
             Value = null!;
+            UserId = userId;
         }
 
         private FinancialTransaction(
