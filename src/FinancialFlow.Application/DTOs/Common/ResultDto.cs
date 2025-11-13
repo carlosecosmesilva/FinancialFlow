@@ -1,4 +1,4 @@
-namespace FinancialFlow.Application.Common.Results;
+namespace FinancialFlow.Application.DTOs.Common;
 
 public sealed class Result<T>
 {

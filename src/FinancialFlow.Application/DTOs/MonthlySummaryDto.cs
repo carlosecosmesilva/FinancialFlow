@@ -1,6 +1,6 @@
 using System;
 
-namespace FinancialFlow.Application.UseCases.Reports.Queries.GetMonthlySummary;
+namespace FinancialFlow.Application.DTOs;
 
 public sealed record MonthlySummaryDto(
     Guid UserId,

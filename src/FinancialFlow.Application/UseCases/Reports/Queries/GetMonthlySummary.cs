@@ -1,5 +1,6 @@
 using System;
 using MediatR;
+using FinancialFlow.Application.DTOs;
 
 namespace FinancialFlow.Application.UseCases.Reports.Queries.GetMonthlySummary;
 
